@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -37,7 +38,7 @@ func main() {
 	{
 		messages.POST("/callback", storeMessage)
 		messages.POST("/send", sendMessage)
-		messages.GET("/:name", userMessages)
+		messages.GET("/:userId", userMessages)
 	}
 
 	router.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
@@ -103,3 +104,14 @@ func sendMessage(c *gin.Context) {
 	})
 }
 
+// Query message list of the user from MongoDB
+func userMessages(c *gin.Context) {
+	userId := c.Param("userId")
+
+	message := new(model.Message)
+	messages := message.GetUserMessageList(userId)
+
+	c.JSON(http.StatusOK, gin.H{
+		"messages": json.RawMessage(messages),
+	})
+}
