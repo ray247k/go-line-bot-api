@@ -28,12 +28,15 @@ func main() {
 	// Init line bot
 	lineBotChannelSecret, lineBotChannelAccessToken := viper.GetString("line-sdk.channel-secret"), viper.GetString("line-sdk.channel-access-token")
 	lineBotClient, lineBotErr = linebot.New(lineBotChannelSecret, lineBotChannelAccessToken)
+	if lineBotErr != nil {
+		panic(err.Error())
+	}
 
 	router := gin.Default()
 	messages := router.Group("/messages")
 	{
 		messages.POST("/callback", storeMessage)
-		messages.GET("/send", sendMessage)
+		messages.POST("/send", sendMessage)
 		messages.GET("/:name", userMessages)
 	}
 
@@ -85,3 +88,18 @@ func storeMessage(c *gin.Context) {
 		"message": "Success",
 	})
 }
+
+// Send message back to line
+func sendMessage(c *gin.Context) {
+	message := c.PostForm("message")
+	targetUserId := viper.GetString("line.target-user-id")
+
+	if _, err := lineBotClient.PushMessage(targetUserId, linebot.NewTextMessage(message)).Do(); err != nil {
+		panic(err.Error())
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Success",
+	})
+}
+

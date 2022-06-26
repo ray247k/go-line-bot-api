@@ -7,3 +7,5 @@ database:
 line-sdk:
   channel-secret:
   channel-access-token:
+line:
+  target-user-id:
