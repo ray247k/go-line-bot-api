@@ -32,13 +32,13 @@ func initEngine() {
 	// Connect to MongoDB
 	mgoCli, err = mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
 
 	// Check the connection
 	err = mgoCli.Ping(context.TODO(), nil)
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
 }
 

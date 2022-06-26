@@ -1,22 +1,19 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"net/http"
 
-	util "line-webhook-receiver/database/util"
+	model "line-webhook-receiver/database/model"
 
+	"github.com/gin-gonic/gin"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 	"github.com/spf13/viper"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
-	lineBotClient      *linebot.Client
-	lineBotErr         error
-	messagesCollection *mongo.Collection
-	insertResult       *mongo.InsertOneResult
+	lineBotClient *linebot.Client
+	lineBotErr    error
 )
 
 func main() {
@@ -28,21 +25,63 @@ func main() {
 		return
 	}
 
-	// Connect to mongoDB
-	client := util.GetMgoCli()
-	defer client.Disconnect(context.TODO())
-	messagesCollection = client.Database(viper.GetString("database.dbname")).Collection("messages")
-
 	// Init line bot
 	lineBotChannelSecret, lineBotChannelAccessToken := viper.GetString("line-sdk.channel-secret"), viper.GetString("line-sdk.channel-access-token")
 	lineBotClient, lineBotErr = linebot.New(lineBotChannelSecret, lineBotChannelAccessToken)
 
-	// TODO prepare message
-	message := bson.D{{"Message", "Hi"}, {"UserInfo", "Nanami"}}
+	router := gin.Default()
+	messages := router.Group("/messages")
+	{
+		messages.POST("/callback", storeMessage)
+		messages.GET("/send", sendMessage)
+		messages.GET("/:name", userMessages)
+	}
 
-	// Insert message into database
-	if insertResult, err = messagesCollection.InsertOne(context.TODO(), message); err != nil {
-		fmt.Print(err)
+	router.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+}
+
+// Receive message from line webhook, save the user info and message in MongoDB
+func storeMessage(c *gin.Context) {
+	events, err := lineBotClient.ParseRequest(c.Request)
+
+	if err != nil {
+		if err == linebot.ErrInvalidSignature {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Bad Request",
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Bad Request",
+			})
+		}
 		return
 	}
+
+	newMessage := ""
+	lineId := ""
+	displayName := ""
+
+	for _, event := range events {
+		lineId = event.Source.UserID
+		profile, err := lineBotClient.GetProfile(event.Source.UserID).Do()
+		if err != nil {
+			panic(err.Error())
+		}
+		displayName = profile.DisplayName
+
+		fmt.Println(profile)
+		if event.Type == linebot.EventTypeMessage {
+			switch message := event.Message.(type) {
+			case *linebot.TextMessage:
+				newMessage = message.Text
+			}
+		}
+	}
+
+	message := new(model.Message)
+	message.Store(newMessage, lineId, displayName)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Success",
+	})
 }
