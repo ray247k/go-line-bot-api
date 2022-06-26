@@ -27,10 +27,10 @@ func (Message) Store(message string, lineId string, displayName string) {
 	messagesCollection = client.Database(viper.GetString("database.dbname")).Collection("messages")
 
 	// prepare message
-	newMessage := bson.D{
-		{"Message", message},
-		{"LineId", lineId},
-		{"DisplayName", displayName},
+	newMessage := bson.M{
+		"Message":     message,
+		"LineId":      lineId,
+		"DisplayName": displayName,
 	}
 
 	// Insert message into database
