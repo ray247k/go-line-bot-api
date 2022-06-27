@@ -93,7 +93,7 @@ func storeMessage(c *gin.Context) {
 // Send message back to line
 func sendMessage(c *gin.Context) {
 	message := c.PostForm("message")
-	targetUserId := viper.GetString("line.target-user-id")
+	targetUserId := c.PostForm("userId")
 
 	if _, err := lineBotClient.PushMessage(targetUserId, linebot.NewTextMessage(message)).Do(); err != nil {
 		panic(err.Error())
