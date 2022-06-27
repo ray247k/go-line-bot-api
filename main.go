@@ -73,7 +73,6 @@ func storeMessage(c *gin.Context) {
 		}
 		displayName = profile.DisplayName
 
-		fmt.Println(profile)
 		if event.Type == linebot.EventTypeMessage {
 			switch message := event.Message.(type) {
 			case *linebot.TextMessage:
